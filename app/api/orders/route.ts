@@ -1,0 +1,28 @@
+import { NextResponse } from 'next/server'
+import { getSupabaseAdmin } from '@/lib/supabase-admin'
+import { validateOrderInput } from '@/lib/order-validation'
+import { buildPurchaseEvent, sendPurchaseToConversionsApi } from '@/lib/meta-events'
+
+export async function POST(request: Request) {
+  try {
+    const input = validateOrderInput(await request.json())
+    const a = input.attribution ?? {}
+    const { data, error } = await getSupabaseAdmin().rpc('create_order', {
+      p_submission_id: input.submissionId, p_product_slug: input.productSlug, p_full_name: input.fullName, p_phone: input.phone,
+      p_wilaya: input.wilaya, p_commune: input.commune, p_address: input.address, p_quantity: input.quantity, p_notes: input.notes ?? null,
+      p_utm_source: a.utm_source ?? null, p_utm_medium: a.utm_medium ?? null, p_utm_campaign: a.utm_campaign ?? null,
+      p_utm_content: a.utm_content ?? null, p_utm_term: a.utm_term ?? null, p_fbclid: a.fbclid ?? null,
+    })
+    if (error) {
+      if (error.message.includes('product_unavailable')) return NextResponse.json({ error: 'product_unavailable' }, { status: 400 })
+      console.error('order creation failed', error); return NextResponse.json({ error: 'order_creation_failed' }, { status: 500 })
+    }
+    const order = Array.isArray(data) ? data[0] : data
+    try { await sendPurchaseToConversionsApi(buildPurchaseEvent(order, request.url, { phone: input.phone, fullName: input.fullName })) } catch { console.error('meta conversion event failed') }
+    return NextResponse.json({ order }, { status: 201 })
+  } catch (error) {
+    const code = error instanceof Error ? error.message : 'unexpected_error'
+    if (code === 'invalid_form_data' || code === 'invalid_order_details') return NextResponse.json({ error: code }, { status: 400 })
+    console.error('order request failed', error); return NextResponse.json({ error: 'unexpected_error' }, { status: 500 })
+  }
+}

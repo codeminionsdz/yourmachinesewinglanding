@@ -1,0 +1,33 @@
+import { Analytics } from '@vercel/analytics/next'
+import type { Metadata, Viewport } from 'next'
+import { IBM_Plex_Sans_Arabic, Noto_Kufi_Arabic } from 'next/font/google'
+import './globals.css'
+import { MetaPixel } from '@/components/meta-pixel'
+
+const bodyFont = IBM_Plex_Sans_Arabic({ subsets: ['arabic', 'latin'], variable: '--font-body', weight: ['400', '500', '600', '700'] })
+const displayFont = Noto_Kufi_Arabic({ subsets: ['arabic', 'latin'], variable: '--font-display', weight: ['500', '700', '900'] })
+
+export const metadata: Metadata = {
+  title: 'ACME MSTX320 | ماكينة سرفلة Moustex Model 320',
+  description: 'ماكنة سرفلة Moustex Model 320 احترافية للعمل اليومي، مع ضمان 24 شهر، قطع غيار، دعم تقني وتوصيل إلى 69 ولاية.',
+  generator: 'v0.app',
+}
+
+export const viewport: Viewport = {
+  colorScheme: 'light',
+  themeColor: '#f4efe4',
+  width: 'device-width',
+  initialScale: 1,
+}
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="ar" dir="rtl" className="bg-background">
+      <body className={`${bodyFont.variable} ${displayFont.variable} font-sans antialiased`}>
+        {children}
+        <MetaPixel />
+        {process.env.NODE_ENV === 'production' && <Analytics />}
+      </body>
+    </html>
+  )
+}
