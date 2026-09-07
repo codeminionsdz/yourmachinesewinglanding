@@ -75,3 +75,8 @@ export function trackMetaEvent(name: MetaEvent['name'], parameters: Record<strin
   }
   dispatchMetaEvent(event)
 }
+
+export function trackMetaPurchase(value: number, currency: string, eventId: string) {
+  if (!Number.isFinite(value) || !eventId) return
+  trackMetaEvent('Purchase', { value, currency }, eventId)
+}

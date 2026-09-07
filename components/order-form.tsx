@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useState } from 'react'
-import { trackMetaEvent } from './meta-pixel'
+import { trackMetaPurchase } from './meta-pixel'
 
 type OrderResponse = { order?: { order_number?: string; total_amount?: number; currency?: string }; error?: string }
 
@@ -27,7 +27,7 @@ export function OrderForm() {
       const result = await response.json() as OrderResponse
       if (!response.ok) throw new Error(result.error || 'order_failed')
       setOrderNumber(result.order?.order_number || ''); setState('success')
-      if (result.order?.order_number) trackMetaEvent('Purchase', { value: result.order.total_amount, currency: result.order.currency || 'DZD', content_name: 'ACME model 320', content_type: 'product' }, result.order.order_number)
+      if (result.order?.order_number && result.order.total_amount !== undefined) trackMetaPurchase(Number(result.order.total_amount), result.order.currency || 'DZD', result.order.order_number)
     } catch { setState('error'); setMessage('تعذّر تسجيل طلبك. حاول مرة أخرى.') }
   }
   if (state === 'success') return <section id="order-form" className="order-section"><div className="order-success" role="status"><p className="eyebrow">تم استلام طلبك</p><h2>تم تسجيل طلبك بنجاح</h2><p>سنتواصل معك لتأكيد الطلب.</p>{orderNumber && <p className="order-reference">رقم الطلب: <strong>{orderNumber}</strong></p>}<p>الدفع عند الاستلام</p></div></section>
