@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 import { ArrowUpLeft, ChevronDown, Menu, MessageCircle, ShoppingBag, Wrench, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { OrderForm } from './order-form'
+import { getMetaEventId, trackMetaEvent } from './meta-pixel'
 
 const p = {
   hero:'/newest-machine-front.png',
@@ -21,9 +22,10 @@ const p = {
 }
 
 const Fade=({children,className=''}:{children:React.ReactNode,className?:string})=><motion.div className={className} initial={{opacity:0,y:18}} whileInView={{opacity:1,y:0}} viewport={{once:true,margin:'-8%'}} transition={{duration:.6,ease:[.22,1,.36,1]}}>{children}</motion.div>
-const Button=({className=''}:{className?:string})=><a href="#order-form" className={`cta ${className}`}>اطلب الآن</a>
+const beginCheckout=()=>trackMetaEvent('InitiateCheckout',{content_name:'ACME model 320',value:44000,currency:'DZD'},getMetaEventId('InitiateCheckout'))
+const Button=({className=''}:{className?:string})=><a href="#order-form" onClick={beginCheckout} className={`cta ${className}`}>اطلب الآن</a>
 const ScrollCue=({className=''}:{className?:string})=><a className={`scroll-cue ${className}`} href="#features" aria-label="اكتشف المزيد"><ChevronDown/></a>
-const FloatingActions=({compact}:{compact:boolean})=><div className={`floating-actions ${compact?'is-compact':''}`}><a className="whatsapp" href="https://wa.me/213555693725" target="_blank" rel="noreferrer" aria-label="الدعم الفني"><Wrench/><span>الدعم الفني</span></a><a className="cta order-action" href="#order-form" aria-label="اطلب الآن"><ShoppingBag/><span>اطلب الآن</span></a></div>
+const FloatingActions=({compact}:{compact:boolean})=><div className={`floating-actions ${compact?'is-compact':''}`}><a className="whatsapp" href="https://wa.me/213555693725" target="_blank" rel="noreferrer" aria-label="الدعم الفني"><Wrench/><span>الدعم الفني</span></a><a className="cta order-action" href="#order-form" onClick={beginCheckout} aria-label="اطلب الآن"><ShoppingBag/><span>اطلب الآن</span></a></div>
 const SectionTitle=({kicker,title,children}:{kicker:string,title:string,children?:React.ReactNode})=><div className="max-w-2xl"><p className="eyebrow">{kicker}</p><h2 className="headline">{title}</h2>{children ? <p className="section-copy">{children}</p> : null}</div>
 
  export function ProductStory(){

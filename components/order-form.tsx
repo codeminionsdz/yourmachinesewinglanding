@@ -20,7 +20,6 @@ export function OrderForm() {
     const normalizedPhone = values.phone.replace(/\s+/g, '')
     if (!/^(?:0[567]\d{8}|\+213[567]\d{8})$/.test(normalizedPhone)) { setState('error'); setMessage('رقم الهاتف غير صحيح. أدخل رقمًا جزائريًا صالحًا.'); return }
     const id = submissionId || crypto.randomUUID(); setSubmissionId(id); setState('submitting'); setMessage('')
-    trackMetaEvent('InitiateCheckout', { content_name: 'ACME model 320', value: 44000, currency: 'DZD' }, id)
     try {
       const params = new URLSearchParams(window.location.search)
       const attribution = Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'].map(key => [key, params.get(key) || undefined]))
