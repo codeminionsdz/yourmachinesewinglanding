@@ -1,5 +1,6 @@
 import 'server-only'
 import { createHash } from 'crypto'
+import { getIntegrationSettings } from '@/lib/integration-settings'
 
 export type PurchaseEvent = { eventName: 'Purchase'; eventTime: number; eventId: string; actionSource: 'website'; eventSourceUrl: string; value: number; currency: string; userData?: { ph?: string[]; fn?: string[] } }
 export function buildPurchaseEvent(order: { order_number: string; total_amount: number; currency: string }, requestUrl: string, customer?: { phone?: string; fullName?: string }): PurchaseEvent {
@@ -8,8 +9,9 @@ export function buildPurchaseEvent(order: { order_number: string; total_amount: 
 }
 
 export async function sendPurchaseToConversionsApi(event: PurchaseEvent) {
-  const pixelId = process.env.META_PIXEL_ID
-  const accessToken = process.env.META_ACCESS_TOKEN
+  const settings = await getIntegrationSettings().catch(() => null)
+  const pixelId = settings?.meta_pixel_id || process.env.META_PIXEL_ID
+  const accessToken = settings?.meta_capi_access_token || process.env.META_ACCESS_TOKEN
   if (!pixelId || !accessToken) return { sent: false, configured: false }
   const version = process.env.META_GRAPH_API_VERSION || 'v20.0'
   const response = await fetch(`https://graph.facebook.com/${version}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ data: [{ event_name: event.eventName, event_time: event.eventTime, event_id: event.eventId, action_source: event.actionSource, event_source_url: event.eventSourceUrl, user_data: event.userData, custom_data: { value: event.value, currency: event.currency, content_name: 'ACME model 320', content_type: 'product' } }] }), cache: 'no-store' })

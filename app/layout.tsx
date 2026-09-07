@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { IBM_Plex_Sans_Arabic, Noto_Kufi_Arabic } from 'next/font/google'
 import './globals.css'
 import { MetaPixel } from '@/components/meta-pixel'
+import { getIntegrationSettings } from '@/lib/integration-settings'
 
 const bodyFont = IBM_Plex_Sans_Arabic({ subsets: ['arabic', 'latin'], variable: '--font-body', weight: ['400', '500', '600', '700'] })
 const displayFont = Noto_Kufi_Arabic({ subsets: ['arabic', 'latin'], variable: '--font-display', weight: ['500', '700', '900'] })
@@ -20,12 +21,13 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const settings = await getIntegrationSettings().catch(() => null)
   return (
     <html lang="ar" dir="rtl" className="bg-background">
       <body className={`${bodyFont.variable} ${displayFont.variable} font-sans antialiased`}>
         {children}
-        <MetaPixel />
+        <MetaPixel pixelId={settings?.meta_pixel_id || process.env.NEXT_PUBLIC_META_PIXEL_ID} />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

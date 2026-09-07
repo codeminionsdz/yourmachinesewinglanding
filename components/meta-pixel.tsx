@@ -4,13 +4,12 @@ import Script from 'next/script'
 
 declare global { interface Window { fbq?: (...args: unknown[]) => void; _fbq?: Window['fbq'] } }
 
-export function MetaPixel() {
-  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID
+export function MetaPixel({ pixelId }: { pixelId?: string | null }) {
   if (!pixelId) return null
   return <><Script id="meta-pixel" strategy="afterInteractive">{`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');fbq('track','PageView');fbq('track','ViewContent',{content_name:'ACME model 320',content_type:'product'});`}</Script></>
 }
 
 export function trackMetaEvent(name: 'InitiateCheckout' | 'Purchase', parameters?: Record<string, unknown>, eventId?: string) {
-  if (typeof window === 'undefined' || !window.fbq || !process.env.NEXT_PUBLIC_META_PIXEL_ID) return
+  if (typeof window === 'undefined' || !window.fbq) return
   window.fbq('track', name, parameters ?? {}, eventId ? { eventID: eventId } : undefined)
 }
