@@ -1,8 +1,9 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { trackMetaPurchase } from './meta-pixel'
 
+type ConfirmedPurchase = { eventId: string; value: number; currency: string }
 type OrderResponse = { order?: { order_number?: string; total_amount?: number; currency?: string }; error?: string }
 
 export function OrderForm() {
@@ -11,6 +12,10 @@ export function OrderForm() {
   const [state, setState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
   const [orderNumber, setOrderNumber] = useState('')
+  const [confirmedPurchase, setConfirmedPurchase] = useState<ConfirmedPurchase | null>(null)
+  useEffect(() => {
+    if (state === 'success' && confirmedPurchase) trackMetaPurchase(confirmedPurchase.value, confirmedPurchase.currency, confirmedPurchase.eventId)
+  }, [state, confirmedPurchase])
   function update(key: keyof typeof values, value: string) { setValues(current => ({ ...current, [key]: value })); if (state === 'error') { setState('idle'); setMessage('') } }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (state === 'submitting') return
@@ -26,8 +31,11 @@ export function OrderForm() {
       const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productSlug: 'acme-model-320', quantity: 1, submissionId: id, ...values, attribution }) })
       const result = await response.json() as OrderResponse
       if (!response.ok) throw new Error(result.error || 'order_failed')
-      setOrderNumber(result.order?.order_number || ''); setState('success')
-      if (result.order?.order_number && result.order.total_amount !== undefined) trackMetaPurchase(Number(result.order.total_amount), result.order.currency || 'DZD', result.order.order_number)
+      const eventId = result.order?.order_number
+      const value = Number(result.order?.total_amount)
+      const currency = result.order?.currency || 'DZD'
+      if (!eventId || !Number.isFinite(value) || currency !== 'DZD') throw new Error('invalid_confirmed_order')
+      setOrderNumber(eventId); setConfirmedPurchase({ eventId, value, currency }); setState('success')
     } catch { setState('error'); setMessage('تعذّر تسجيل طلبك. حاول مرة أخرى.') }
   }
   if (state === 'success') return <section id="order-form" className="order-section"><div className="order-success" role="status"><p className="eyebrow">تم استلام طلبك</p><h2>تم تسجيل طلبك بنجاح</h2><p>سنتواصل معك لتأكيد الطلب.</p>{orderNumber && <p className="order-reference">رقم الطلب: <strong>{orderNumber}</strong></p>}<p>الدفع عند الاستلام</p></div></section>
