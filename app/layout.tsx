@@ -11,6 +11,16 @@ const displayFont = Noto_Kufi_Arabic({ subsets: ['arabic', 'latin'], variable: '
 export const metadata: Metadata = {
   title: 'ACME MSTX320 | ماكينة سرفلة ACME Model 320',
   description: 'ماكنة سرفلة ACME Model 320 احترافية للعمل اليومي، مع ضمان 24 شهر، قطع غيار، دعم تقني وتوصيل إلى 69 ولاية.',
+  openGraph: {
+    title: 'ACME MSTX320 | ماكينة سرفلة ACME Model 320',
+    description: 'ماكنة سرفلة ACME Model 320 احترافية للعمل اليومي، مع ضمان 24 شهر، قطع غيار، دعم تقني وتوصيل إلى 69 ولاية.',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'ACME MSTX320 | ماكينة سرفلة ACME Model 320',
+    description: 'ماكنة سرفلة ACME Model 320 احترافية للعمل اليومي، مع ضمان 24 شهر، قطع غيار، دعم تقني وتوصيل إلى 69 ولاية.',
+  },
   generator: 'v0.app',
 }
 
