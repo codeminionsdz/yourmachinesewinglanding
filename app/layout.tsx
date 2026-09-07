@@ -9,8 +9,8 @@ const bodyFont = IBM_Plex_Sans_Arabic({ subsets: ['arabic', 'latin'], variable: 
 const displayFont = Noto_Kufi_Arabic({ subsets: ['arabic', 'latin'], variable: '--font-display', weight: ['500', '700', '900'] })
 
 export const metadata: Metadata = {
-  title: 'ACME MSTX320 | ماكينة سرفلة Moustex Model 320',
-  description: 'ماكنة سرفلة Moustex Model 320 احترافية للعمل اليومي، مع ضمان 24 شهر، قطع غيار، دعم تقني وتوصيل إلى 69 ولاية.',
+  title: 'ACME MSTX320 | ماكينة سرفلة ACME Model 320',
+  description: 'ماكنة سرفلة ACME Model 320 احترافية للعمل اليومي، مع ضمان 24 شهر، قطع غيار، دعم تقني وتوصيل إلى 69 ولاية.',
   generator: 'v0.app',
 }
 

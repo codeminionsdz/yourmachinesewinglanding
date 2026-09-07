@@ -51,7 +51,7 @@ create trigger orders_updated_at before update on public.orders for each row exe
 create trigger admin_users_updated_at before update on public.admin_users for each row execute function public.set_updated_at();
 
 insert into public.products (name, slug, brand, manufacturer, model, description, price, currency)
-values ('ACME model 320', 'acme-model-320', 'MOUSTEX', 'ACME', '320', 'MOUSTEX ACME model 320 overlock machine.', 44000, 'DZD')
+values ('ACME model 320', 'acme-model-320', 'ACME', 'ACME', '320', 'ACME model 320 overlock machine.', 44000, 'DZD')
 on conflict (slug) do update set name = excluded.name, brand = excluded.brand, manufacturer = excluded.manufacturer,
 model = excluded.model, description = excluded.description, price = excluded.price, currency = excluded.currency, updated_at = now();
 
