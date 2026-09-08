@@ -18,6 +18,7 @@ export async function POST(request: Request) {
       console.error('order creation failed', error); return NextResponse.json({ error: 'order_creation_failed' }, { status: 500 })
     }
     const order = Array.isArray(data) ? data[0] : data
+    if (order?.id) await getSupabaseAdmin().from('abandoned_orders').update({ status: 'converted', converted_order_id: order.id, last_seen_at: new Date().toISOString() }).eq('session_id', input.submissionId)
     try { await sendPurchaseToConversionsApi(buildPurchaseEvent(order, request.url, { phone: input.phone, fullName: input.fullName })) } catch { console.error('meta conversion event failed') }
     return NextResponse.json({ order }, { status: 201 })
   } catch (error) {

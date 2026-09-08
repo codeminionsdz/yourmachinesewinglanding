@@ -8,7 +8,7 @@ type ConfirmedPurchase = { eventId: string; value: number; currency: string }
 type OrderResponse = { order?: { order_number?: string; total_amount?: number; currency?: string }; error?: string }
 
 export function OrderForm() {
-  const [values, setValues] = useState({ fullName: '', phone: '', wilaya: '', commune: '', address: '' })
+  const [values, setValues] = useState({ fullName: '', phone: '', wilaya: '', commune: '', address: '', notes: '' })
   const [submissionId, setSubmissionId] = useState('')
   const [state, setState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
@@ -16,9 +16,18 @@ export function OrderForm() {
   const [confirmedPurchase, setConfirmedPurchase] = useState<ConfirmedPurchase | null>(null)
   const selectedWilaya = territories.find(wilaya => String(wilaya.code) === values.wilaya)
   useEffect(() => {
+    if (!Object.values(values).some(value => value.trim())) return
+    if (!submissionId) { setSubmissionId(crypto.randomUUID()); return }
+    const timer = window.setTimeout(() => {
+      const selectedCommune = selectedWilaya?.communes.find(commune => commune.ascii === values.commune)
+      void fetch('/api/abandoned-orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId: submissionId, fullName: values.fullName, phone: values.phone, wilaya: selectedWilaya?.ascii ?? values.wilaya, commune: selectedCommune?.ascii ?? values.commune, address: values.address, notes: values.notes }) })
+    }, 800)
+    return () => window.clearTimeout(timer)
+  }, [values, submissionId, selectedWilaya])
+  useEffect(() => {
     if (state === 'success' && confirmedPurchase) trackMetaPurchase(confirmedPurchase.value, confirmedPurchase.currency, confirmedPurchase.eventId)
   }, [state, confirmedPurchase])
-  function update(key: keyof typeof values, value: string) { setValues(current => ({ ...current, [key]: value })); if (state === 'error') { setState('idle'); setMessage('') } }
+  function update(key: keyof typeof values, value: string) { if (!submissionId) setSubmissionId(crypto.randomUUID()); setValues(current => ({ ...current, [key]: value })); if (state === 'error') { setState('idle'); setMessage('') } }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (state === 'submitting') return
     const requiredFields: [keyof typeof values, string][] = [['fullName', 'الاسم الكامل'], ['phone', 'رقم الهاتف'], ['wilaya', 'الولاية'], ['commune', 'البلدية'], ['address', 'العنوان']]
@@ -32,7 +41,7 @@ export function OrderForm() {
       const attribution = Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'].map(key => [key, params.get(key) || undefined]))
       const selectedCommune = selectedWilaya?.communes.find(commune => commune.ascii === values.commune)
       if (!selectedWilaya || !selectedCommune) throw new Error('invalid_delivery_area')
-      const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productSlug: 'acme-model-320', quantity: 1, submissionId: id, fullName: values.fullName, phone: values.phone, wilaya: selectedWilaya.ascii, commune: selectedCommune.ascii, address: values.address, attribution }) })
+      const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productSlug: 'acme-model-320', quantity: 1, submissionId: id, fullName: values.fullName, phone: values.phone, wilaya: selectedWilaya.ascii, commune: selectedCommune.ascii, address: values.address, notes: values.notes, attribution }) })
       const result = await response.json() as OrderResponse
       if (!response.ok) throw new Error(result.error || 'order_failed')
       const eventId = result.order?.order_number
@@ -43,5 +52,5 @@ export function OrderForm() {
     } catch { setState('error'); setMessage('تعذّر تسجيل طلبك. حاول مرة أخرى.') }
   }
   if (state === 'success') return <section id="order-form" className="order-section"><div className="order-success" role="status"><p className="eyebrow">تم استلام طلبك</p><h2>تم تسجيل طلبك بنجاح</h2><p>سنتواصل معك لتأكيد الطلب.</p>{orderNumber && <p className="order-reference">رقم الطلب: <strong>{orderNumber}</strong></p>}<p>الدفع عند الاستلام</p></div></section>
-  return <section id="order-form" className="order-section" dir="rtl"><div className="order-intro"><p className="eyebrow">اطلب الآن</p><h2>خلي طلبك يوصل لباب دارك.</h2><p>عمر المعلومات التالية، ونتواصلو معاك باش نأكدو الطلب.</p></div><form className="order-form" onSubmit={submit} noValidate><div className="order-summary"><div><span>المنتج</span><strong>ACME Model 320</strong></div><div><span>السعر</span><strong>44,000 دج</strong></div><div><span>طريقة الدفع</span><strong>الدفع عند الاستلام</strong></div></div><label>الاسم الكامل<input required value={values.fullName} onChange={event => update('fullName', event.target.value)} autoComplete="name" /></label><label>رقم الهاتف<input required type="tel" inputMode="tel" placeholder="05 / 06 / 07 xx xx xx xx" value={values.phone} onChange={event => update('phone', event.target.value)} autoComplete="tel" /></label><div className="order-fields"><label>الولاية<select required value={values.wilaya} onChange={event => setValues(current => ({ ...current, wilaya: event.target.value, commune: '' }))}><option value="">اختر الولاية</option>{territories.map(wilaya => <option key={wilaya.code} value={wilaya.code}>{wilaya.arabic} - {wilaya.ascii}</option>)}</select></label><label>البلدية<select required value={values.commune} disabled={!selectedWilaya} onChange={event => update('commune', event.target.value)}><option value="">{selectedWilaya ? 'اختر البلدية' : 'اختر الولاية أولا'}</option>{selectedWilaya?.communes.map(commune => <option key={commune.ascii} value={commune.ascii}>{commune.arabic} - {commune.ascii}</option>)}</select></label></div><label>العنوان<input required value={values.address} onChange={event => update('address', event.target.value)} autoComplete="street-address" /></label>{state === 'error' && <p className="order-error" role="alert">{message}</p>}<button className="cta order-submit" type="submit" disabled={state === 'submitting'}>{state === 'submitting' ? 'جار تسجيل الطلب…' : 'تأكيد الطلب'}</button></form></section>
+  return <section id="order-form" className="order-section" dir="rtl"><div className="order-intro"><p className="eyebrow">اطلب الآن</p><h2>خلي طلبك يوصل لباب دارك.</h2><p>عمر المعلومات التالية، ونتواصلو معاك باش نأكدو الطلب.</p></div><form className="order-form" onSubmit={submit} noValidate><div className="order-summary"><div><span>المنتج</span><strong>ACME Model 320</strong></div><div><span>السعر</span><strong>44,000 دج</strong></div><div><span>طريقة الدفع</span><strong>الدفع عند الاستلام</strong></div></div><label>الاسم الكامل<input required value={values.fullName} onChange={event => update('fullName', event.target.value)} autoComplete="name" /></label><label>رقم الهاتف<input required type="tel" inputMode="tel" placeholder="05 / 06 / 07 xx xx xx xx" value={values.phone} onChange={event => update('phone', event.target.value)} autoComplete="tel" /></label><div className="order-fields"><label>الولاية<select required value={values.wilaya} onChange={event => setValues(current => ({ ...current, wilaya: event.target.value, commune: '' }))}><option value="">اختر الولاية</option>{territories.map(wilaya => <option key={wilaya.code} value={wilaya.code}>{wilaya.arabic} - {wilaya.ascii}</option>)}</select></label><label>البلدية<select required value={values.commune} disabled={!selectedWilaya} onChange={event => update('commune', event.target.value)}><option value="">{selectedWilaya ? 'اختر البلدية' : 'اختر الولاية أولا'}</option>{selectedWilaya?.communes.map(commune => <option key={commune.ascii} value={commune.ascii}>{commune.arabic} - {commune.ascii}</option>)}</select></label></div><label>العنوان<input required value={values.address} onChange={event => update('address', event.target.value)} autoComplete="street-address" /></label><label>ملاحظة <span className="optional-label">(اختيارية)</span><textarea maxLength={1000} value={values.notes} onChange={event => update('notes', event.target.value)} placeholder="مثال: اتصل بي قبل التوصيل" /></label>{state === 'error' && <p className="order-error" role="alert">{message}</p>}<button className="cta order-submit" type="submit" disabled={state === 'submitting'}>{state === 'submitting' ? 'جار تسجيل الطلب…' : 'تأكيد الطلب'}</button></form></section>
 }
