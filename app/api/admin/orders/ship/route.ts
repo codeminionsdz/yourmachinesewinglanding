@@ -3,7 +3,15 @@ import { verifyAdminApi } from '@/lib/admin-auth'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { getIntegrationSettings } from '@/lib/integration-settings'
 
-type ZrTerritory = { id?: string; name?: string | null; level?: string | null; parentId?: string | null }
+type ZrTerritory = { id?: string; name?: string | null; nameArabic?: string | null; level?: string | null; parentId?: string | null }
+type ZrTerritoryPage = { items?: ZrTerritory[]; pageNumber?: number; totalPages?: number }
+type TerritoryDiagnostic = { requestedWilaya: string; requestedCommune: string; cityCandidates: ZrTerritory[]; districtCandidates: ZrTerritory[] }
+
+class TerritoryResolutionError extends Error {
+  constructor(public readonly code: 'zr_territories_unavailable' | 'zr_territory_not_found', public readonly diagnostic?: TerritoryDiagnostic) {
+    super(code)
+  }
+}
 
 function zrApiUrl(baseUrl: string, path: string) {
   const base = baseUrl.replace(/\/$/, '')
@@ -12,22 +20,50 @@ function zrApiUrl(baseUrl: string, path: string) {
 }
 
 function normalizeTerritoryName(value: string) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase()
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/[ؤئ]/g, 'ء').replace(/[’']/g, '').replace(/[.,،؛:()[\]{}]/g, ' ').replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase()
+}
+
+function territoryLevel(item: ZrTerritory) {
+  return normalizeTerritoryName(item.level ?? '')
+}
+
+function territoryMatchesName(item: ZrTerritory, requested: string) {
+  return [item.name, item.nameArabic].some(name => normalizeTerritoryName(name ?? '') === requested)
+}
+
+function territorySummary(item: ZrTerritory) {
+  return { id: item.id, name: item.name, nameArabic: item.nameArabic, level: item.level, parentId: item.parentId }
 }
 
 async function resolveTerritories(baseUrl: string, tenantId: string, apiKey: string, wilaya: string, commune: string) {
-  const response = await fetch(zrApiUrl(baseUrl, '/territories/search'), {
-    method: 'POST',
-    headers: { accept: 'application/json', 'content-type': 'application/json', 'X-Tenant': tenantId, 'X-Api-Key': apiKey },
-    body: JSON.stringify({ pageNumber: 1, pageSize: 5000, orderBy: ['code asc'] }),
-    cache: 'no-store',
-  })
-  const result = await response.json().catch(() => null) as { items?: ZrTerritory[] } | null
-  if (!response.ok || !Array.isArray(result?.items)) throw new Error('zr_territories_unavailable')
-  const city = result.items.find(item => item.level?.toLocaleLowerCase() === 'wilaya' && normalizeTerritoryName(item.name ?? '') === normalizeTerritoryName(wilaya))
-  if (!city?.id) throw new Error('zr_wilaya_not_found')
-  const district = result.items.find(item => item.level?.toLocaleLowerCase() === 'district' && item.parentId === city.id && normalizeTerritoryName(item.name ?? '') === normalizeTerritoryName(commune))
-  if (!district?.id) throw new Error('zr_commune_not_found')
+  const territories: ZrTerritory[] = []
+  let pageNumber = 1
+  let totalPages = 1
+  do {
+    const response = await fetch(zrApiUrl(baseUrl, '/territories/search'), {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json', 'X-Tenant': tenantId, 'X-Api-Key': apiKey },
+      body: JSON.stringify({ pageNumber, pageSize: 1000, orderBy: ['code asc'] }),
+      cache: 'no-store',
+    })
+    const result = await response.json().catch(() => null) as ZrTerritoryPage | null
+    if (!response.ok || !Array.isArray(result?.items)) throw new TerritoryResolutionError('zr_territories_unavailable')
+    territories.push(...result.items)
+    totalPages = result.totalPages || pageNumber
+    pageNumber += 1
+  } while (pageNumber <= totalPages)
+
+  const requestedWilaya = normalizeTerritoryName(wilaya)
+  const requestedCommune = normalizeTerritoryName(commune)
+  const cityCandidates = territories.filter(item => territoryLevel(item) === 'wilaya' && territoryMatchesName(item, requestedWilaya))
+  const city = cityCandidates[0]
+  const districtCandidates = territories.filter(item => territoryLevel(item) === 'commune' && (city?.id ? item.parentId === city.id : territoryMatchesName(item, requestedCommune)))
+  const district = districtCandidates.find(item => territoryMatchesName(item, requestedCommune))
+  if (!city?.id || !district?.id) {
+    const diagnostic = { requestedWilaya: wilaya, requestedCommune: commune, cityCandidates: cityCandidates.map(territorySummary), districtCandidates: districtCandidates.map(territorySummary) }
+    console.warn('ZR territory resolution failed', diagnostic)
+    throw new TerritoryResolutionError('zr_territory_not_found', diagnostic)
+  }
   return { cityTerritoryId: city.id, districtTerritoryId: district.id }
 }
 
@@ -64,8 +100,9 @@ export async function POST(request: Request) {
     if (saveError || !saved) return NextResponse.json({ error: 'shipment_save_failed' }, { status: 500 })
     return NextResponse.json({ trackingReference: tracking })
   } catch (error) {
-    const code = error instanceof Error ? error.message : 'zr_request_failed'
-    const messages: Record<string, string> = { zr_territories_unavailable: 'ZR Express territory data is unavailable. Please retry.', zr_wilaya_not_found: 'The order wilaya was not found in ZR Express territories.', zr_commune_not_found: 'The order commune was not found for that wilaya in ZR Express territories.' }
-    return NextResponse.json({ error: code, message: messages[code] ?? 'Unable to create the ZR Express parcel. Please retry.' }, { status: 502 })
+    const code = error instanceof TerritoryResolutionError ? error.code : error instanceof Error ? error.message : 'zr_request_failed'
+    const messages: Record<string, string> = { zr_territories_unavailable: 'ZR Express territory data is unavailable. Please retry.', zr_territory_not_found: 'Wilaya/commune not found in ZR Express territories. Please verify the delivery information.' }
+    const diagnostic = error instanceof TerritoryResolutionError ? error.diagnostic : undefined
+    return NextResponse.json({ error: code, message: messages[code] ?? 'Unable to create the ZR Express parcel. Please retry.', ...(diagnostic ? { diagnostic } : {}) }, { status: 502 })
   }
 }
