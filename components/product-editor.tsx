@@ -8,7 +8,8 @@ type Product = { id?: string; name: string; slug: string; brand: string; descrip
 type Props = { product?: Product }
 
 export function ProductEditor({ product }: Props) {
-  const [form, setForm] = useState<Product>(product ?? { name: '', slug: '', brand: '', description: '', price: null, active: false, colors: [], sizes: [], media: {} })
+  const initialProduct = product ? { ...product, colors: product.colors.map(color => typeof color === 'string' ? { name: color, label: color, swatch: '#777777' } : color) } : { name: '', slug: '', brand: '', description: '', price: null, active: false, colors: [], sizes: [], media: {} }
+  const [form, setForm] = useState<Product>(initialProduct)
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const update = (key: keyof Product, value: unknown) => { setState('idle'); setForm(current => ({ ...current, [key]: value })) }
   const toggle = (key: 'colors' | 'sizes', value: string) => { if (key === 'sizes') update(key, form.sizes.includes(value) ? form.sizes.filter(item => item !== value) : [...form.sizes, value]); else update(key, form.colors.some(item => item.name === value) ? form.colors.filter(item => item.name !== value) : [...form.colors, { name: value, label: value, swatch: '#777777' }]) }

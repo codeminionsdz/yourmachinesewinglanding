@@ -6,8 +6,10 @@ import { createContext, useContext, useState } from 'react'
 import { OrderForm } from './order-form'
 
 type Color = 'Black' | 'Grey' | 'Olive'
-type Product = { id: string; name: string; slug: string; brand: string; description: string | null; price: number | null; currency: string; colors: { name: Color; swatch: string; label: string }[]; sizes: string[]; media: Record<string, string> }
+type ColorOption = { name: Color; swatch: string; label: string }
+type Product = { id: string; name: string; slug: string; brand: string; description: string | null; price: number | null; currency: string; colors: (ColorOption | Color | string)[]; sizes: string[]; media: Record<string, string> }
 const ProductMediaContext = createContext<Record<string, string>>({})
+const colorDefaults: Record<Color, ColorOption> = { Black: { name: 'Black', swatch: '#101315', label: 'أسود' }, Grey: { name: 'Grey', swatch: '#747a78', label: 'رمادي' }, Olive: { name: 'Olive', swatch: '#68705a', label: 'زيتي' } }
 
 function ProductVisual({ media, asset, label, priority = false }: { media?: Record<string, string>; asset: string; label?: string; priority?: boolean }) {
   const path = useContext(ProductMediaContext)[asset] || media?.[asset] || ''
@@ -22,7 +24,7 @@ const Fade = ({ children, className = '' }: { children: React.ReactNode; classNa
 
 export function ProductStory({ product }: { product: Product }) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const colors = product.colors
+  const colors = product.colors.map(item => typeof item === 'string' ? colorDefaults[item as Color] : { ...colorDefaults[item.name], ...item }).filter((item): item is ColorOption => Boolean(item && colorDefaults[item.name]))
   const sizes = product.sizes
   const [color, setColor] = useState<Color>(colors[0]?.name ?? 'Black')
   const [size, setSize] = useState(sizes[0] ?? 'M')
