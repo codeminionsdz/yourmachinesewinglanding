@@ -14,7 +14,7 @@ export async function sendPurchaseToConversionsApi(event: PurchaseEvent) {
   const accessToken = settings?.meta_capi_access_token || process.env.META_ACCESS_TOKEN
   if (!pixelId || !accessToken) return { sent: false, configured: false }
   const version = process.env.META_GRAPH_API_VERSION || 'v20.0'
-  const response = await fetch(`https://graph.facebook.com/${version}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ data: [{ event_name: event.eventName, event_time: event.eventTime, event_id: event.eventId, action_source: event.actionSource, event_source_url: event.eventSourceUrl, user_data: event.userData, custom_data: { value: event.value, currency: event.currency, content_name: 'ACME model 320', content_type: 'product' } }] }), cache: 'no-store' })
+  const response = await fetch(`https://graph.facebook.com/${version}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ data: [{ event_name: event.eventName, event_time: event.eventTime, event_id: event.eventId, action_source: event.actionSource, event_source_url: event.eventSourceUrl, user_data: event.userData, custom_data: { value: event.value, currency: event.currency, content_type: 'product' } }] }), cache: 'no-store' })
   if (!response.ok) throw new Error('meta_capi_request_failed')
   return { sent: true, configured: true }
 }

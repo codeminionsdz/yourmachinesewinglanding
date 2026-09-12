@@ -19,7 +19,7 @@ declare global {
 export function MetaPixel({ pixelId }: { pixelId?: string | null }) {
   if (!pixelId) return null
   const pixelIdLiteral = JSON.stringify(pixelId)
-  const pageViewParameters = JSON.stringify({ content_name: 'ACME model 320', content_type: 'product' })
+  const pageViewParameters = JSON.stringify({ content_name: 'GURM Convertible Cargo Pants', content_type: 'product' })
   return <Script id="meta-pixel" strategy="afterInteractive">{`
 (function(w,d,s,u,id){
   if (w.__metaPixelInitialized && w.__metaPixelId === id) return;

@@ -1,63 +1,61 @@
 'use client'
 
 import { motion } from 'motion/react'
-import { ArrowUpLeft, ChevronDown, Menu, MessageCircle, ShoppingBag, Wrench, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ArrowDownLeft, Check, Menu, ShoppingBag, X } from 'lucide-react'
+import { createContext, useContext, useState } from 'react'
 import { OrderForm } from './order-form'
-import { getMetaEventId, trackMetaEvent } from './meta-pixel'
 
-const p = {
-  hero:'/newest-machine-front.png',
-  open:'/open-machine-detail.png',
-  needle:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_16-38-03-iOge1zpOPPL6e7FeUxTu5HNeunTh8c.jpg',
-  controls:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_16-51-07-Qf8gw1Hpx8GvI0xldenPCHivLgkHXE.jpg',
-  fabric:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_16-43-40-cywp45PZJLklxYqtNOt6ZTqUHRhD9F.jpg',
-  result:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_16-46-45-2iDZkFnhMYRR6ee0mY1pMmP2Cii7x5.jpg',
-  hand:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_16-38-04-jfWWE5dvVm7Vpp2aaL7NCPJP5WAWzB.jpg',
-  guide:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_15-30-05-XaxxoLGgGMNpgYT8EjAXTB6jq1kELL.jpg',
-  final:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_14-48-24-hReMKRyfjBBIzEbX0BtJQvggyabR7n.jpg',
-  detail:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_15-17-23-uY0ND6HZRVjsVQjCCO9Hc55Lwn9rI9.jpg',
-  denim:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo_2026-08-30_17-16-10-ZHvXoLSqfKrTHvGecDovLe6ZqAnBkN.jpg',
-  logo:'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-1Bu8EhALneZV7WDQLpUP10gVnJ1txq.png'
+type Color = 'Black' | 'Grey' | 'Olive'
+type Product = { id: string; name: string; slug: string; brand: string; description: string | null; price: number | null; currency: string; colors: { name: Color; swatch: string; label: string }[]; sizes: string[]; media: Record<string, string> }
+const ProductMediaContext = createContext<Record<string, string>>({})
+
+function ProductVisual({ media, asset, label, priority = false }: { media?: Record<string, string>; asset: string; label?: string; priority?: boolean }) {
+  const path = useContext(ProductMediaContext)[asset] || media?.[asset] || ''
+  const isPriority = priority || asset === 'hero'
+  return <div className="product-visual" data-asset={path}>
+    {path && <img src={path} alt={label ?? 'صورة المنتج'} loading={isPriority ? 'eager' : 'lazy'} decoding="async" fetchPriority={isPriority ? 'high' : 'auto'} onError={event => { event.currentTarget.style.display = 'none'; event.currentTarget.parentElement?.classList.add('asset-missing') }} />}
+    <div className="asset-missing-copy"><span>{label ?? 'صورة المنتج'}</span><small>{path ? path.replace('/gurm/', '') : 'لم تتم إضافة صورة بعد'}</small></div>
+  </div>
 }
 
-const Fade=({children,className=''}:{children:React.ReactNode,className?:string})=><motion.div className={className} initial={{opacity:0,y:18}} whileInView={{opacity:1,y:0}} viewport={{once:true,margin:'-8%'}} transition={{duration:.6,ease:[.22,1,.36,1]}}>{children}</motion.div>
-const beginCheckout=()=>trackMetaEvent('InitiateCheckout',{content_name:'ACME model 320',value:44000,currency:'DZD'},getMetaEventId('InitiateCheckout'))
-const Button=({className=''}:{className?:string})=><a href="#order-form" onClick={beginCheckout} className={`cta ${className}`}>اطلب الآن</a>
-const ScrollCue=({className=''}:{className?:string})=><a className={`scroll-cue ${className}`} href="#features" aria-label="اكتشف المزيد"><ChevronDown/></a>
-const FloatingActions=({compact}:{compact:boolean})=><div className={`floating-actions ${compact?'is-compact':''}`}><a className="whatsapp" href="https://wa.me/213555693725" target="_blank" rel="noreferrer" aria-label="الدعم الفني"><Wrench/><span>الدعم الفني</span></a><a className="cta order-action" href="#order-form" onClick={beginCheckout} aria-label="اطلب الآن"><ShoppingBag/><span>اطلب الآن</span></a></div>
-const SectionTitle=({kicker,title,children}:{kicker:string,title:string,children?:React.ReactNode})=><div className="max-w-2xl"><p className="eyebrow">{kicker}</p><h2 className="headline">{title}</h2>{children ? <p className="section-copy">{children}</p> : null}</div>
-const Testimonials=()=> <section className="testimonials" dir="rtl"><div className="testimonials-inner"><div className="testimonials-heading"><p className="eyebrow">تجارب حقيقية</p><h2>آراء حقيقية من زبائننا</h2><p>كلمات من زبائن جربوا الماكينة وشاركوا تجربتهم معنا.</p></div><div className="testimonial-grid"><article><div className="testimonial-stars" aria-label="5 من 5 نجوم">★★★★★</div><p>وصلتني السورجي، الله يبارك هيلة ما شاء الله. ربي يرزقكم من واسع فضله، وشكرًا لكم على الصدق والمصداقية.</p><strong>زبون من عملائنا</strong></article><article><div className="testimonial-stars" aria-label="5 من 5 نجوم">★★★★★</div><p>ما شاء الله، ماكينة رائعة وخدمتها روعة. إن شاء الله تكون بداية موفقة.</p><strong>زبونة من عملائنا</strong></article><article><div className="testimonial-stars" aria-label="5 من 5 نجوم">★★★★★</div><p>صح، عندي أختها. ما شاء الله.</p><strong>من تعليقات زبائننا</strong></article></div></div></section>
+const Fade = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => <motion.div className={className} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: '-10%' }} transition={{ duration: .7, ease: [.22, 1, .36, 1] }}>{children}</motion.div>
 
- export function ProductStory(){
- const [open,setOpen]=useState(false)
- const [compact,setCompact]=useState(false)
- useEffect(()=>{const onScroll=()=>setCompact(window.scrollY>72); onScroll(); window.addEventListener('scroll',onScroll,{passive:true}); return()=>window.removeEventListener('scroll',onScroll)},[])
- return <main>
-  <div className="trust-bar"><span>الاستبدال أو الاسترجاع مضمون في حال خلل في المنتج</span></div>
-  <header className="site-header"><a href="#top" className="brand" aria-label="YOUR MACHINE SEWING"><img src={p.logo} alt="شعار YOUR MACHINE SEWING"/><span>YOUR MACHINE<br/>SEWING</span></a><nav aria-label="التنقل الرئيسي"><a href="#features">المزايا</a><a href="#support">ما بعد الشراء</a><a href="#support">الدعم</a><Button/></nav><button className="menu-button" onClick={()=>setOpen(!open)} aria-expanded={open} aria-label={open?'إغلاق القائمة':'فتح القائمة'}>{open?<X/>:<Menu/>}</button>{open&&<nav className="mobile-nav"><a href="#features" onClick={()=>setOpen(false)}>المزايا</a><a href="#support" onClick={()=>setOpen(false)}>ما بعد الشراء</a><a href="#support" onClick={()=>setOpen(false)}>الدعم</a><Button/></nav>}</header>
+export function ProductStory({ product }: { product: Product }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const colors = product.colors
+  const sizes = product.sizes
+  const [color, setColor] = useState<Color>(colors[0]?.name ?? 'Black')
+  const [size, setSize] = useState(sizes[0] ?? 'M')
+  const scrollToOrder = () => { document.querySelector('#order-form')?.scrollIntoView({ behavior: 'smooth' }); setMenuOpen(false) }
 
-  <section id="top" className="hero-commerce border-b border-[var(--border)]"><motion.img initial={{scale:1.03}} animate={{scale:1}} transition={{duration:1.2}} src={p.hero} alt="ماكينة أوفرلوك ACME Model 320 كاملة"/><div className="hero-panel"><p className="eyebrow hero-model">ACME model 320</p><h1>سورجي 4 خيوط منزلية بجودة صناعية</h1><p className="hero-description">ماكنة سرفلة منزلية تسورجي و تخيط و تقص القماش الزايد بإحترافية.</p></div><ScrollCue className="hero-cue"/></section>
+  return <ProductMediaContext.Provider value={product.media}><main>
+    <div className="gurm-notice"><span>{product.brand} / ملابس عملية للحركة اليومية</span><span>التوصيل إلى جميع الولايات</span></div>
+    <header className="gurm-header">
+      <a className="gurm-logo" href="#top" aria-label={`الصفحة الرئيسية لـ ${product.name}`}><img src="/dani-wear-logo.png" alt={`شعار ${product.brand}`} onError={event => { event.currentTarget.style.display = 'none' }} /><span>{product.brand}</span><small>علامة عملية للحركة اليومية</small></a>
+      <nav className="gurm-nav" aria-label="التنقل الرئيسي"><a href="#story">الفكرة</a><a href="#details">التفاصيل</a><a href="#selector">الألوان والمقاسات</a><button onClick={scrollToOrder}>اطلب الآن <ArrowDownLeft size={16} /></button></nav>
+      <button className="gurm-menu" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}>{menuOpen ? <X /> : <Menu />}</button>
+      {menuOpen && <nav className="gurm-mobile-nav"><a href="#story" onClick={() => setMenuOpen(false)}>الفكرة</a><a href="#details" onClick={() => setMenuOpen(false)}>التفاصيل</a><a href="#selector" onClick={() => setMenuOpen(false)}>الألوان والمقاسات</a><a href="#order-form" onClick={scrollToOrder}>اطلب الآن</a></nav>}
+    </header>
 
+    <section id="top" className="gurm-hero"><div className="hero-copy"><p className="gurm-kicker">Dani Wear / سروال Cargo قابل للتحويل</p><h1>سروال واحد.<br /><em>حرية أكثر.</em></h1><p className="hero-lede">سروال عملي مصمم للحركة. للطريق، للأيام خارج المنزل، ولكل ما يأتي بعدها.</p><button className="gurm-button" onClick={scrollToOrder}>اطلب الآن <ArrowDownLeft size={18} /></button><div className="hero-trust"><span><Check size={16} /> الدفع عند الاستلام</span><span><Check size={16} /> التوصيل إلى جميع الولايات</span></div></div><div className="hero-art"><ProductVisual asset="hero" priority label="سروال Dani Wear بجانب دراجة نارية" /><span className="hero-index">01 / 04</span></div></section>
 
-  <section className="video-section section"><Fade><div className="video-intro"><h2>خلي الفينيسيون تهدر على خدمتك.</h2></div></Fade><video src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_2534-2aoorMjkGPgaGLKB72BSFIdUP6x3n6.MOV" autoPlay muted loop playsInline controls aria-label="فيديو توضيحي للماكينة"/><div className="video-actions"><p className="price video-price text-center text-primary">44,000 دج</p><Button/></div></section>
+    <section id="story" className="gurm-story"><Fade><div><p className="gurm-kicker">الفكرة</p><h2>سروال واحد.<br /><span>طريقتان للّبس.</span></h2></div></Fade><Fade className="story-copy"><p>سروال عملي يواكب إيقاعك. ارتده بطوله الكامل عندما تحتاجه، وحوّله إلى شورت عندما تحتاج إلى حرية أكبر.</p><div className="story-line"><span>01</span><span>من المدينة إلى الطريق، دون تغيير ملابسك.</span></div></Fade></section>
 
-  <section className="section access section-with-cue"><ScrollCue className="section-cue"/><Fade><div className="max-w-2xl"><p className="eyebrow access-kicker">بساطة تركيب الخيط</p><h2 className="headline">واجهة الماكنة تفتح بالكامل و مسارات الخيط امامك بوضوح .</h2></div></Fade><Fade className="open-photo"><img src={p.open} alt="الماكينة مفتوحة بالكامل ومسارات الخيط واضحة"/></Fade></section>
+    <section className="conversion"><div className="conversion-head"><p className="gurm-kicker">التحويل</p><h2>من سروال<br /><em>إلى شورت.</em></h2><p>حرية أكبر عندما تحتاج إليها.</p></div><div className="conversion-visuals"><ProductVisual asset="fullBody" label="سروال GURM بطوله الكامل" /><div className="conversion-arrow">←</div><ProductVisual asset="shorts" label="سروال GURM بعد تحويله إلى شورت" /></div><div className="conversion-steps"><span><b>01</b> سروال</span><span><b>02</b> تحويل</span><span><b>03</b> شورت</span></div></section>
 
-  <section id="features" className="section section-with-cue features-section"><Fade><SectionTitle kicker="ACME MODEL 320" title="تخدم بالطريقة اللي تحتاجها.">تخدم بـ 2، 3 أو 4 خيوط، مع 8 أنواع مختلفة من السرفلة، كيما تحبها: سورجي رقيقة ولا عريضة.</SectionTitle></Fade><div className="thread-gallery"><Fade><img src="/thread-machine.webp" alt="ثمانية أنواع مختلفة من السرفلة"/></Fade><Fade><img src="/thread-detail.webp" alt="خياطة رقيقة وعريضة بـ 2 و3 و4 خيوط"/></Fade></div></section>
+    <section id="details" className="details-editorial"><Fade><div className="detail-visual"><ProductVisual asset="detail" label="تفصيل الجيب العملي في سروال GURM" /></div></Fade><Fade className="detail-copy"><p className="gurm-kicker">مصمم للحركة</p><h2>كل ما تحتاجه.<br /><em>ولا شيء زائد.</em></h2><p>تصميم Cargo عملي، جيوب متعددة للاستخدام اليومي، وقصة تمنحك حرية الحركة في الطريق وخارجه.</p><div className="feature-list"><span><b>01</b> تصميم قابل للتحويل</span><span><b>02</b> جيوب عملية متعددة</span><span><b>03</b> مصمم للحركة</span></div></Fade></section>
 
-  <section className="section fabric-section"><Fade><div className="max-w-2xl"><p className="eyebrow fabric-kicker">كل أنواع الأقمشة</p><h2 className="headline">تخدم جميع انواع الأقمشة، رقيق و خشين و حتى الأقمشة المطاطية.</h2></div></Fade><div className="fabric-journey"><img src="/fabric-machine.webp" alt="ماكينة السرفلة تخيط أقمشة مختلفة"/><div><span>قماش خفيف</span><span>قماش مطاطي</span><span>قماش سميك</span></div></div></section>
+    <section className="gurm-gallery"><div className="gallery-heading"><p className="gurm-kicker">GURM</p><h2>للطريق.<br /><em>وللحياة اليومية.</em></h2></div><div className="gallery-grid"><ProductVisual asset="motorcycle" label="سروال GURM في أجواء ركوب الدراجة" /><ProductVisual asset="colors" label="ألوان سروال GURM" /><ProductVisual asset="grey" label="سروال GURM باللون الرمادي" /><ProductVisual asset="olive" label="سروال GURM باللون الزيتي" /></div></section>
 
-  <section className="proof-section"><img src="/denim-machine.webp" alt="ماكينة السرفلة أثناء خياطة وتجميع القماش"/><Fade className="proof-copy"><p className="eyebrow proof-kicker">سرفلة و تجميع</p><h2>دير السورجي و تخيط في نفس الوقت.</h2></Fade></section>
+    <section className="use-cases"><div className="use-heading"><p className="gurm-kicker">سروال واحد / أيام متعددة</p><h2>للطريق.<br />وللحياة.</h2></div><div className="use-list"><div><span>01</span><h3>للطريق</h3><p>حرية حركة أثناء القيادة.</p></div><div><span>02</span><h3>لليوميات</h3><p>عملي وسهل التنسيق.</p></div><div><span>03</span><h3>للخارج</h3><p>خيار عملي للحركة والأنشطة الخارجية.</p></div><div><span>04</span><h3>للسفر</h3><p>قطعة واحدة، استخدامات متعددة.</p></div></div></section>
 
-  <section className="section reasons"><div className="reasons-layout"><div><Fade><SectionTitle kicker="علاش ACME MODEL 320؟" title="علاش ACME320 تقدر تكون شريكك المثالي فالورشة تاعك ؟"></SectionTitle></Fade><div className="reason-list">{['سرفلة نظيفة كيما تاع المصانع تخليك واثق من خدمتك قدام الزبون','ما تحصركش في نوع واحد من السرفلة أو نوع واحد من القماش؛ عندك خيارات أكثر حسب الخدمة اللي تخدمها.','بساطة في الاستعمال وسهولة في تركيب الخيط تخليك تركز على خدمتك فقط','متانة و جودة الماشينة تخليها دوم معاك حتى بعد ما يكبر مشروعك'].map((x,i)=><Fade className="reason" key={x}><strong>0{i+1}</strong><p>{x}</p></Fade>)}</div></div><Fade className="reasons-image"><img src={p.needle} alt="ماكينة ACME Model 320 أثناء الخياطة"/><span>اختيار يخدم معاك</span></Fade></div></section>
+    <section id="selector" className="selector-section"><div><p className="gurm-kicker">اختر Dani Wear</p><h2>لونك.<br /><em>مقاسك.</em></h2><p className="selector-note">متوفر بالأسود والرمادي والزيتي. المقاسات من S إلى XXL.</p></div><div className="selector-panel"><div className="selected-product"><ProductVisual asset="black" label="صورة المنتج الأساسية لسروال Dani Wear" /></div><div className="variant-group"><label>اختر اللون <strong>{colors.find(item => item.name === color)?.label}</strong></label><div className="color-options">{colors.map(item => <button key={item.name} className={color === item.name ? 'selected' : ''} onClick={() => setColor(item.name)} aria-label={`اختيار اللون ${item.label}`}><i style={{ background: item.swatch }} /><span>{item.label}</span></button>)}</div></div><div className="variant-group"><label>اختر المقاس <strong>{size}</strong></label><div className="size-options">{sizes.map(item => <button key={item} className={size === item ? 'selected' : ''} onClick={() => setSize(item)}>{item}</button>)}</div></div><button className="gurm-button full" onClick={scrollToOrder}><ShoppingBag size={18} /> اطلب {color === 'Black' ? 'بالأسود' : color === 'Grey' ? 'بالرمادي' : 'بالزيتي'} / {size}</button></div></section>
 
-  <section id="support" className="support"><div><Fade><p className="eyebrow">خبرة Your Machine Sewing</p><h2>علاش تشريها من Your Machine Sewing ؟</h2><p>لأنك ما تشريش ماكينة وتبقى وحدك بعدها.</p></Fade><div className="support-list">{[['ضمان مكتوب ومختوم لمدة عامين','باش تكون شاري وأنت مرتاح.'],['قطع الغيار متوفرة','وما تبقاش وحدك إذا احتجت قطعة في المستقبل.'],['دعم فني وخدمة ما بعد البيع','نرافقوك حتى بعد الشراء، ماشي غير حتى تخرج الماكينة من المحل.'],['محتوى تعليمي ودعم مستمر','فيديوهات تعليمية وقناة Telegram تساعدك في الاستعمال والخدمة.'],['Your Machine Sewing — خبرة حقيقية في المجال','متجر متخصص وعنده تجربة فعلية مع الماكينات والخياطين، وليس مجرد بائع على الإنترنت.'],['التوصيل للمنزل في 69 ولاية مع الدفع بعد الاستلام.','']].map(([title,copy],i)=><div key={title}><strong>{String(i+1).padStart(2,'0')}</strong><span><b>{title}</b><small>{copy}</small></span></div>)}</div><div className="support-actions"><a href="https://t.me/yourmachinesav" target="_blank" rel="noreferrer"><span>محتوى تعليمي ودعم مستمر</span><ArrowUpLeft/></a><a href="https://wa.me/213555693725" target="_blank" rel="noreferrer"><MessageCircle/><span>واتساب الدعم الفني: 0555693725</span><ArrowUpLeft/></a></div></div></section>
-
-  <div className="trust-icons section"><span className="trust-gold"><img src="/gold-warranty-cropped.webp" alt="ضمان سنتين"/>ضمان 24 شهر</span><span className="trust-delivery"><img src="/fast-delivery-source.png" alt="التوصيل السريع"/>التوصيل السريع</span><span className="trust-store"><img src="/trusted-store.webp" alt="متجر موثوق"/>متجر موثوق</span></div>
-  <OrderForm/>
-  <Testimonials/>
-  <FloatingActions compact={compact}/>
-  <footer><img src={p.logo} alt="YOUR MACHINE SEWING"/><p>ماكينة حقيقية. خدمة واضحة. وراحة بعد الشراء.</p></footer>
- </main>
+    <section className="faq-section"><div><p className="gurm-kicker">أسئلة شائعة</p><h2>كل ما تحتاج<br />إلى معرفته.</h2></div><div className="faq-list"><details><summary>هل يمكن تحويل السروال إلى شورت؟</summary><p>نعم، صُمم GURM ليُرتدى كسروال أو كشورت عند الحاجة.</p></details><details><summary>ما هي المقاسات المتوفرة؟</summary><p>المقاسات المتوفرة هي S و M و L و XL و XXL.</p></details><details><summary>ما هي الألوان المتوفرة؟</summary><p>الأسود والرمادي والزيتي.</p></details><details><summary>هل التوصيل متوفر إلى جميع الولايات؟</summary><p>نعم، التوصيل متوفر إلى جميع الولايات في الجزائر.</p></details><details><summary>هل الدفع عند الاستلام متوفر؟</summary><p>نعم، الدفع عند الاستلام متوفر.</p></details><details><summary>كيف أختار المقاس المناسب؟</summary><p>اختر المقاس المعتاد لديك. ستتم إضافة دليل المقاسات عند توفر القياسات الدقيقة.</p></details></div></section>
+    <section className="trust-section"><p>✓ التوصيل إلى جميع الولايات</p><p>✓ الدفع عند الاستلام</p></section>
+    <p className="public-price" dir="rtl">{product.price === null ? 'السعر عند التأكيد' : `${product.price.toLocaleString()} ${product.currency}`}</p>
+    <OrderForm productSlug={product.slug} productName={product.name} price={product.price} currency={product.currency} color={color} size={size} />
+    <button className="mobile-buy" onClick={scrollToOrder}>اطلب الآن <ArrowDownLeft size={16} /></button>
+    <footer className="gurm-footer"><span>Dani Wear</span><p>سروال واحد. حرية أكثر.</p><small>© 2026 Dani Wear — الجزائر</small></footer>
+  </main></ProductMediaContext.Provider>
 }

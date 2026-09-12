@@ -19,4 +19,14 @@ Shipping API delivery is intentionally not implemented without provider credenti
 3. In the Supabase SQL editor, assign that Auth user as owner: `insert into public.admin_users (user_id, role) values ('AUTH_USER_UUID', 'owner');`.
 4. Open `/admin/login` and sign in. The server verifies the Supabase Auth session and the `admin_users` role before rendering protected pages or serving admin APIs.
 
+You can also create the first admin from the project root without placing the password in source control. In PowerShell:
+
+```powershell
+$env:ADMIN_PASSWORD = 'use-a-strong-password-here'
+npm run admin:create -- admin@example.com owner
+Remove-Item Env:ADMIN_PASSWORD
+```
+
+The script creates the Supabase Auth user, confirms the email, and assigns the selected `owner`, `admin`, or `operator` role in `public.admin_users`. It uses `SUPABASE_SERVICE_ROLE_KEY` server-side only.
+
 Admin roles are `owner`, `admin`, and `operator`. Secrets are never read into client components or displayed in Settings.
