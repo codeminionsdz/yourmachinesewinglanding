@@ -1,3 +1,4 @@
+ .hero-price{margin:22px 0 0;color:var(--olive);font-size:20px;font-weight:800;letter-spacing:.02em;direction:rtl}
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
