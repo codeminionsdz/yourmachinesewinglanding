@@ -36,6 +36,7 @@ export async function sendPurchaseToConversionsApi(event: PurchaseEvent) {
       fbclid: Boolean(event.fbclid),
       fbp: Boolean(event.userData?.fbp),
       fbc: Boolean(event.userData?.fbc),
+      phone_matching: Boolean(event.userData?.ph?.length),
       event_id: event.eventId,
       event_source_url: diagnosticUrl,
     })
