@@ -16,6 +16,11 @@ function readMetaAttribution() {
   const params = new URLSearchParams(window.location.search)
   const fbclid = params.get('fbclid') || window.sessionStorage.getItem('meta_fbclid') || undefined
   if (params.get('fbclid')) window.sessionStorage.setItem('meta_fbclid', params.get('fbclid') as string)
+  let fbc = readCookie('_fbc')
+  if (!fbc && fbclid) {
+    fbc = `fb.1.${Date.now()}.${fbclid}`
+    document.cookie = `_fbc=${encodeURIComponent(fbc)}; Max-Age=7776000; Path=/; SameSite=Lax`
+  }
   return {
     utm_source: params.get('utm_source') || undefined,
     utm_medium: params.get('utm_medium') || undefined,
@@ -23,8 +28,9 @@ function readMetaAttribution() {
     utm_content: params.get('utm_content') || undefined,
     utm_term: params.get('utm_term') || undefined,
     fbclid,
+    event_source_url: window.location.href,
     fbp: readCookie('_fbp'),
-    fbc: readCookie('_fbc'),
+    fbc,
   }
 }
 
