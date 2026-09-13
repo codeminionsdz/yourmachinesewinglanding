@@ -2,10 +2,23 @@ import 'server-only'
 import { createHash } from 'crypto'
 import { getIntegrationSettings } from '@/lib/integration-settings'
 
-export type PurchaseEvent = { eventName: 'Purchase'; eventTime: number; eventId: string; actionSource: 'website'; eventSourceUrl: string; value: number; currency: string; userData?: { ph?: string[]; fn?: string[] } }
-export function buildPurchaseEvent(order: { order_number: string; total_amount: number; currency: string }, requestUrl: string, customer?: { phone?: string; fullName?: string }): PurchaseEvent {
+export type PurchaseEvent = { eventName: 'Purchase'; eventTime: number; eventId: string; actionSource: 'website'; eventSourceUrl: string; value: number; currency: string; userData?: { ph?: string[]; fn?: string[]; fbp?: string; fbc?: string; client_ip_address?: string; client_user_agent?: string } }
+export function buildPurchaseEvent(order: { order_number: string; total_amount: number; currency: string }, requestUrl: string, customer?: { phone?: string; fullName?: string }, attribution: Record<string, string | undefined> = {}, client?: { clientIp?: string; clientUserAgent?: string }): PurchaseEvent {
   const hash = (value: string) => createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
-  return { eventName: 'Purchase', eventTime: Math.floor(Date.now() / 1000), eventId: order.order_number, actionSource: 'website', eventSourceUrl: requestUrl, value: order.total_amount, currency: order.currency, userData: customer ? { ph: customer.phone ? [hash(customer.phone)] : undefined, fn: customer.fullName ? [hash(customer.fullName)] : undefined } : undefined }
+  const normalizePhone = (value: string) => {
+    const digits = value.replace(/\D/g, '')
+    return digits.startsWith('0') ? `213${digits.slice(1)}` : digits
+  }
+  return {
+    eventName: 'Purchase', eventTime: Math.floor(Date.now() / 1000), eventId: order.order_number,
+    actionSource: 'website', eventSourceUrl: requestUrl, value: order.total_amount, currency: order.currency,
+    userData: {
+      ph: customer?.phone ? [hash(normalizePhone(customer.phone))] : undefined,
+      fn: customer?.fullName ? [hash(customer.fullName.replace(/\s+/g, ' '))] : undefined,
+      fbp: attribution.fbp, fbc: attribution.fbc,
+      client_ip_address: client?.clientIp, client_user_agent: client?.clientUserAgent,
+    },
+  }
 }
 
 export async function sendPurchaseToConversionsApi(event: PurchaseEvent) {

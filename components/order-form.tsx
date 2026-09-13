@@ -7,6 +7,27 @@ import { trackMetaPurchase } from './meta-pixel'
 type ConfirmedPurchase = { eventId: string; value: number; currency: string }
 type OrderResponse = { order?: { order_number?: string; total_amount?: number; currency?: string }; error?: string }
 
+function readCookie(name: string) {
+  const value = document.cookie.split('; ').find(cookie => cookie.startsWith(`${name}=`))
+  return value ? decodeURIComponent(value.slice(name.length + 1)) : undefined
+}
+
+function readMetaAttribution() {
+  const params = new URLSearchParams(window.location.search)
+  const fbclid = params.get('fbclid') || window.sessionStorage.getItem('meta_fbclid') || undefined
+  if (params.get('fbclid')) window.sessionStorage.setItem('meta_fbclid', params.get('fbclid') as string)
+  return {
+    utm_source: params.get('utm_source') || undefined,
+    utm_medium: params.get('utm_medium') || undefined,
+    utm_campaign: params.get('utm_campaign') || undefined,
+    utm_content: params.get('utm_content') || undefined,
+    utm_term: params.get('utm_term') || undefined,
+    fbclid,
+    fbp: readCookie('_fbp'),
+    fbc: readCookie('_fbc'),
+  }
+}
+
 export function OrderForm() {
   const [values, setValues] = useState({ fullName: '', phone: '', wilaya: '', commune: '', address: '', notes: '' })
   const [submissionId, setSubmissionId] = useState('')
@@ -15,6 +36,7 @@ export function OrderForm() {
   const [orderNumber, setOrderNumber] = useState('')
   const [confirmedPurchase, setConfirmedPurchase] = useState<ConfirmedPurchase | null>(null)
   const selectedWilaya = territories.find(wilaya => String(wilaya.code) === values.wilaya)
+  useEffect(() => { readMetaAttribution() }, [])
   useEffect(() => {
     if (!Object.values(values).some(value => value.trim())) return
     if (!submissionId) { setSubmissionId(crypto.randomUUID()); return }
@@ -37,8 +59,7 @@ export function OrderForm() {
     if (!/^(?:0[567]\d{8}|\+213[567]\d{8})$/.test(normalizedPhone)) { setState('error'); setMessage('رقم الهاتف غير صحيح. أدخل رقمًا جزائريًا صالحًا.'); return }
     const id = submissionId || crypto.randomUUID(); setSubmissionId(id); setState('submitting'); setMessage('')
     try {
-      const params = new URLSearchParams(window.location.search)
-      const attribution = Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid'].map(key => [key, params.get(key) || undefined]))
+      const attribution = readMetaAttribution()
       const selectedCommune = selectedWilaya?.communes.find(commune => commune.ascii === values.commune)
       if (!selectedWilaya || !selectedCommune) throw new Error('invalid_delivery_area')
       const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ productSlug: 'acme-model-320', quantity: 1, submissionId: id, fullName: values.fullName, phone: values.phone, wilaya: selectedWilaya.ascii, commune: selectedCommune.ascii, address: values.address, notes: values.notes, attribution }) })

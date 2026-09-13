@@ -19,7 +19,12 @@ export async function POST(request: Request) {
     }
     const order = Array.isArray(data) ? data[0] : data
     if (order?.id) await getSupabaseAdmin().from('abandoned_orders').update({ status: 'converted', converted_order_id: order.id, last_seen_at: new Date().toISOString() }).eq('session_id', input.submissionId)
-    try { await sendPurchaseToConversionsApi(buildPurchaseEvent(order, request.url, { phone: input.phone, fullName: input.fullName })) } catch { console.error('meta conversion event failed') }
+    const eventSourceUrl = request.headers.get('referer') || request.url
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || undefined
+    const clientUserAgent = request.headers.get('user-agent') || undefined
+    try {
+      await sendPurchaseToConversionsApi(buildPurchaseEvent(order, eventSourceUrl, { phone: input.phone, fullName: input.fullName }, a, { clientIp, clientUserAgent }))
+    } catch { console.error('meta conversion event failed') }
     return NextResponse.json({ order }, { status: 201 })
   } catch (error) {
     const code = error instanceof Error ? error.message : 'unexpected_error'
