@@ -27,12 +27,17 @@ export async function sendPurchaseToConversionsApi(event: PurchaseEvent) {
   const accessToken = settings?.meta_capi_access_token || process.env.META_ACCESS_TOKEN
   if (!pixelId || !accessToken) return { sent: false, configured: false }
   if (process.env.META_ATTRIBUTION_DEBUG === 'true') {
+    let diagnosticUrl = 'invalid'
+    try {
+      const url = new URL(event.eventSourceUrl)
+      diagnosticUrl = `${url.origin}${url.pathname}`
+    } catch { /* keep the safe placeholder */ }
     console.info('meta attribution diagnostics', {
       fbclid: Boolean(event.fbclid),
       fbp: Boolean(event.userData?.fbp),
       fbc: Boolean(event.userData?.fbc),
       event_id: event.eventId,
-      event_source_url: event.eventSourceUrl,
+      event_source_url: diagnosticUrl,
     })
   }
   const version = process.env.META_GRAPH_API_VERSION || 'v20.0'
