@@ -9,18 +9,23 @@ type OrderResponse = { order?: { order_number?: string; total_amount?: number; c
 
 function readCookie(name: string) {
   const value = document.cookie.split('; ').find(cookie => cookie.startsWith(`${name}=`))
-  return value ? decodeURIComponent(value.slice(name.length + 1)) : undefined
+  if (!value) return undefined
+  try { return decodeURIComponent(value.slice(name.length + 1)) } catch { return undefined }
 }
+
+function isValidFbc(value: string | undefined) { return Boolean(value && /^fb\.1\.\d+\.[^\s]+$/.test(value)) }
+function isValidFbp(value: string | undefined) { return Boolean(value && /^fb\.1\.\d+\.\d+$/.test(value)) }
 
 function readMetaAttribution() {
   const params = new URLSearchParams(window.location.search)
   const fbclid = params.get('fbclid') || window.sessionStorage.getItem('meta_fbclid') || undefined
   if (params.get('fbclid')) window.sessionStorage.setItem('meta_fbclid', params.get('fbclid') as string)
   let fbc = readCookie('_fbc')
-  if (!fbc && fbclid) {
+  if (!isValidFbc(fbc) && fbclid) {
     fbc = `fb.1.${Date.now()}.${fbclid}`
     document.cookie = `_fbc=${encodeURIComponent(fbc)}; Max-Age=7776000; Path=/; SameSite=Lax`
   }
+  const fbp = readCookie('_fbp')
   return {
     utm_source: params.get('utm_source') || undefined,
     utm_medium: params.get('utm_medium') || undefined,
@@ -29,8 +34,8 @@ function readMetaAttribution() {
     utm_term: params.get('utm_term') || undefined,
     fbclid,
     event_source_url: window.location.href,
-    fbp: readCookie('_fbp'),
-    fbc,
+    fbp: isValidFbp(fbp) ? fbp : undefined,
+    fbc: isValidFbc(fbc) ? fbc : undefined,
   }
 }
 
