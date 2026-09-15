@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { trackMetaPurchase } from './meta-pixel'
 
 type ConfirmedPurchase = { eventId: string; value: number; currency: string }
-type OrderResponse = { order?: { order_number?: string; total_amount?: number; currency?: string }; error?: string }
+type OrderResponse = { order?: { order_number?: string; total_amount?: number | string; currency?: string }; error?: string }
 
 function readCookie(name: string) {
   const value = document.cookie.split('; ').find(cookie => cookie.startsWith(`${name}=`))
@@ -79,7 +79,7 @@ export function OrderForm() {
       const eventId = result.order?.order_number
       const value = Number(result.order?.total_amount)
       const currency = result.order?.currency || 'DZD'
-      if (!eventId || !Number.isFinite(value) || currency !== 'DZD') throw new Error('invalid_confirmed_order')
+      if (!eventId || !Number.isFinite(value) || value <= 0 || currency !== 'DZD') throw new Error('invalid_confirmed_order')
       setOrderNumber(eventId); setConfirmedPurchase({ eventId, value, currency }); setState('success')
     } catch { setState('error'); setMessage('تعذّر تسجيل طلبك. حاول مرة أخرى.') }
   }

@@ -77,6 +77,6 @@ export function trackMetaEvent(name: MetaEvent['name'], parameters: Record<strin
 }
 
 export function trackMetaPurchase(value: number, currency: string, eventId: string) {
-  if (!Number.isFinite(value) || !eventId) return
+  if (!Number.isFinite(value) || value <= 0 || !eventId) return
   trackMetaEvent('Purchase', { value, currency }, eventId)
 }
