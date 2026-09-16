@@ -12,6 +12,7 @@ export async function POST(request: Request) {
       p_wilaya: input.wilaya, p_commune: input.commune, p_address: input.address, p_quantity: input.quantity, p_notes: input.notes ?? null,
       p_utm_source: a.utm_source ?? null, p_utm_medium: a.utm_medium ?? null, p_utm_campaign: a.utm_campaign ?? null,
       p_utm_content: a.utm_content ?? null, p_utm_term: a.utm_term ?? null, p_fbclid: a.fbclid ?? null,
+      p_fbp: a.fbp ?? null, p_fbc: a.fbc ?? null,
     })
     if (error) {
       if (error.message.includes('product_unavailable')) return NextResponse.json({ error: 'product_unavailable' }, { status: 400 })
@@ -19,8 +20,15 @@ export async function POST(request: Request) {
     }
     const order = Array.isArray(data) ? data[0] : data
     if (order?.id) await getSupabaseAdmin().from('abandoned_orders').update({ status: 'converted', converted_order_id: order.id, last_seen_at: new Date().toISOString() }).eq('session_id', input.submissionId)
+    let eventSourceUrl = request.url
     try {
-      const event = buildPurchaseEvent(order, request.url, { phone: input.phone, fullName: input.fullName })
+      const candidate = new URL(a.event_source_url || request.headers.get('referer') || request.url)
+      if (candidate.origin === new URL(request.url).origin) eventSourceUrl = candidate.href
+    } catch { /* fall back to the request URL */ }
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || undefined
+    const clientUserAgent = request.headers.get('user-agent') || undefined
+    try {
+      const event = buildPurchaseEvent(order, eventSourceUrl, { phone: input.phone, fullName: input.fullName }, a, { clientIp, clientUserAgent })
       const claim = await claimPurchaseSend(order.id)
       if (claim.claimed) {
         try {
