@@ -28,13 +28,21 @@ export async function PATCH(request: Request) {
   if (!await verifyAdminApi(request)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const body = await request.json().catch(() => null)
   const allowed = ['new', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned']
-  if (!body || typeof body.orderId !== 'string') return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
   if (typeof body.status === 'string') {
     if (!allowed.includes(body.status)) return NextResponse.json({ error: 'invalid_status' }, { status: 400 })
-    const { data, error } = await getSupabaseAdmin().from('orders').update({ status: body.status }).eq('id', body.orderId).select('id, order_number, status').single()
+    const orderIds = Array.isArray(body.orderIds) ? [...new Set(body.orderIds.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0))] : typeof body.orderId === 'string' ? [body.orderId] : []
+    if (!orderIds.length || orderIds.length > 100) return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
+    if (orderIds.length > 1) {
+      const { data, error } = await getSupabaseAdmin().from('orders').update({ status: body.status }).in('id', orderIds).select('id, order_number, status')
+      if (error) { console.error('admin bulk order update failed', error); return NextResponse.json({ error: 'request_failed' }, { status: 500 }) }
+      return NextResponse.json({ orders: data ?? [] })
+    }
+    const { data, error } = await getSupabaseAdmin().from('orders').update({ status: body.status }).eq('id', orderIds[0]).select('id, order_number, status').single()
     if (error) { console.error('admin order update failed', error); return NextResponse.json({ error: 'request_failed' }, { status: 500 }) }
     return NextResponse.json({ order: data })
   }
+  if (typeof body.orderId !== 'string') return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
   const text = (value: unknown) => typeof value === 'string' ? value.trim() : ''
   const fullName = text(body.fullName); const phone = text(body.phone); const wilayaCode = text(body.wilayaCode)
   const commune = text(body.commune); const address = text(body.address); const sellerNotes = text(body.sellerNotes)
@@ -49,4 +57,14 @@ export async function PATCH(request: Request) {
   const { data, error } = await db.from('orders').update({ quantity, unit_price: unitPrice, total_amount: totalAmount, wilaya: wilaya.ascii, commune: validCommune.ascii, address, seller_notes: sellerNotes || null }).eq('id', body.orderId).select('id, order_number, quantity, unit_price, total_amount, wilaya, commune, address, notes, seller_notes').single()
   if (error) { console.error('admin order details update failed', error); return NextResponse.json({ error: 'request_failed' }, { status: 500 }) }
   return NextResponse.json({ order: data, customer: { full_name: fullName, phone } })
+}
+
+export async function DELETE(request: Request) {
+  if (!await verifyAdminApi(request)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const body = await request.json().catch(() => null)
+  const orderIds = Array.isArray(body?.orderIds) ? [...new Set(body.orderIds.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0))] : typeof body?.orderId === 'string' ? [body.orderId] : []
+  if (!orderIds.length || orderIds.length > 100) return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
+  const { data, error } = await getSupabaseAdmin().from('orders').delete().in('id', orderIds).select('id')
+  if (error) { console.error('admin order delete failed', error); return NextResponse.json({ error: 'request_failed' }, { status: 500 }) }
+  return NextResponse.json({ deleted: data?.length ?? 0 })
 }

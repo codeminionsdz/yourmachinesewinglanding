@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase-admin'
 import { validateOrderInput } from '@/lib/order-validation'
-import { buildPurchaseEvent, sendPurchaseToConversionsApi } from '@/lib/meta-events'
+import { buildPurchaseEvent, claimPurchaseSend, completePurchaseSend, failPurchaseSend, sendPurchaseToConversionsApi } from '@/lib/meta-events'
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +19,20 @@ export async function POST(request: Request) {
     }
     const order = Array.isArray(data) ? data[0] : data
     if (order?.id) await getSupabaseAdmin().from('abandoned_orders').update({ status: 'converted', converted_order_id: order.id, last_seen_at: new Date().toISOString() }).eq('session_id', input.submissionId)
-    try { await sendPurchaseToConversionsApi(buildPurchaseEvent(order, request.url, { phone: input.phone, fullName: input.fullName })) } catch { console.error('meta conversion event failed') }
+    try {
+      const event = buildPurchaseEvent(order, request.url, { phone: input.phone, fullName: input.fullName })
+      const claim = await claimPurchaseSend(order.id)
+      if (claim.claimed) {
+        try {
+          const result = await sendPurchaseToConversionsApi(event)
+          if (!result.sent) throw new Error('meta_capi_not_configured')
+          await completePurchaseSend(order.id, claim.leaseId)
+        } catch (error) {
+          await failPurchaseSend(order.id, claim.leaseId).catch(failure => console.error('meta conversion claim release failed', failure))
+          throw error
+        }
+      }
+    } catch { console.error('meta conversion event failed') }
     return NextResponse.json({ order }, { status: 201 })
   } catch (error) {
     const code = error instanceof Error ? error.message : 'unexpected_error'
